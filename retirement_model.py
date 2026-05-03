@@ -1184,11 +1184,8 @@ def save_csv(results: SimResults, cfg: SimConfig, path: str) -> None:
     snap_path = path + "_snapshots.csv"
     summ_path = path + "_summary.csv"
 
-    years  = results.years
-    stride = max(1, years // 13)
-    yrs    = list(range(0, years, stride))
-    if yrs[-1] != years:
-        yrs.append(years)
+    years = results.years
+    yrs   = list(range(0, years + 1))  # every year
 
     with open(snap_path, "w", newline="") as f:
         w = csv.writer(f)
