@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement Planner v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;
+  --border:#252a38;--border2:#2f3547;
+  --text:#e8eaf0;--muted:#6b7394;
+  --accent:#4fd1c5;--accent2:#f6ad55;
+  --red:#fc8181;--green:#68d391;--blue:#63b3ed;
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;font-size:13px}
+.app{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.main{display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-header{padding:18px 18px 14px;border-bottom:1px solid var(--border)}
+.sidebar-header h1{font-family:'DM Serif Display',serif;font-size:1.25rem;font-weight:400;line-height:1.2}
+.sidebar-header p{font-size:0.62rem;color:var(--muted);margin-top:3px}
+.section{border-bottom:1px solid var(--border)}
+.sec-hdr{padding:9px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.sec-hdr:hover{background:var(--surface2)}
+.sec-title{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted)}
+.sec-arrow{color:var(--muted);font-size:0.65rem;transition:transform 0.2s}
+.sec-arrow.open{transform:rotate(90deg)}
+.sec-body{padding:10px 18px 14px;display:none}
+.sec-body.open{display:block}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:5px 9px;font-family:'DM Mono',monospace;font-size:0.73rem;outline:none;transition:border-color 0.15s;-moz-appearance:textfield}
+.field input::-webkit-outer-spin-button,.field input::-webkit-inner-spin-button{-webkit-appearance:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field select option{background:var(--surface2)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.cf-list{display:flex;flex-direction:column;gap:5px;margin-bottom:9px;min-height:4px}
+.cf-row{background:var(--surface2);border:1px solid var(--border2);padding:7px 9px;display:flex;align-items:center;gap:6px}
+.cf-badge{font-size:0.58rem;padding:2px 5px;text-transform:uppercase;letter-spacing:0.07em;font-weight:500;flex-shrink:0}
+.cf-badge.contrib{background:rgba(104,211,145,0.15);color:var(--green)}
+.cf-badge.wdraw{background:rgba(252,129,129,0.15);color:var(--red)}
+.cf-badge.wdrawpct{background:rgba(246,173,85,0.15);color:var(--accent2)}
+.cf-desc{flex:1;font-size:0.66rem;line-height:1.35}
+.cf-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.85rem;padding:0 2px}
+.cf-del:hover{color:var(--red)}
+.btn-row{display:flex;flex-direction:column;gap:5px}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-family:'DM Mono',monospace;font-size:0.65rem;cursor:pointer;border:1px solid;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.07em}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#0d0f14}
+.btn-primary:hover{background:#38b2ac}
+.btn-sm{padding:4px 8px;font-size:0.62rem}
+.run-wrap{padding:14px 18px;margin-top:auto;border-top:1px solid var(--border)}
+.run-btn{width:100%;padding:9px;font-family:'DM Serif Display',serif;font-size:0.95rem;cursor:pointer;background:var(--accent);border:none;color:#0d0f14;transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.run-btn:hover{background:#38b2ac}
+.run-btn:disabled{opacity:0.5;cursor:not-allowed}
+.spin{display:none;width:13px;height:13px;border:2px solid rgba(0,0,0,0.2);border-top-color:#0d0f14;border-radius:50%;animation:spin 0.6s linear infinite}
+.running .spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.main-hdr{padding:14px 22px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.main-hdr h2{font-family:'DM Serif Display',serif;font-size:1.05rem;font-weight:400}
+.status{font-size:0.6rem;color:var(--muted)}
+.chart-area{padding:14px 22px 6px}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);padding:10px 6px 6px}
+canvas{display:block;width:100%;height:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:7px 0 0;font-size:0.6rem;color:var(--muted)}
+.leg{display:flex;align-items:center;gap:4px}
+.ld{width:18px;height:3px;border-radius:1px}
+.stats-area{padding:6px 22px 0}
+.sg{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
+.sc{background:var(--surface);padding:9px 9px 7px}
+.sl{font-size:0.57rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:2px}
+.sv{font-size:1rem;font-family:'DM Serif Display',serif}
+.ss{font-size:0.58rem;color:var(--muted);margin-top:1px}
+.c-teal{color:var(--accent)}.c-yellow{color:var(--accent2)}.c-blue{color:var(--blue)}.c-green{color:var(--green)}.c-red{color:var(--red)}
+.tbl-area{padding:14px 22px 22px;display:none}
+.tbl-controls{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.tbl-title{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted)}
+.tbl-ctrl-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ctrl-lbl{font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)}
+.seg-group{display:flex;border:1px solid var(--border2);overflow:hidden}
+.seg{background:var(--surface2);border:none;border-right:1px solid var(--border2);color:var(--muted);font-family:"DM Mono",monospace;font-size:0.62rem;padding:4px 9px;cursor:pointer;transition:all 0.12s;white-space:nowrap}
+.seg:last-child{border-right:none}
+.seg:hover{background:var(--border2);color:var(--text)}
+.seg.active{background:var(--accent);color:#0d0f14}
+table{width:100%;border-collapse:collapse;font-size:0.66rem}
+th{background:var(--surface2);color:var(--muted);font-size:0.57rem;text-transform:uppercase;letter-spacing:0.09em;padding:5px 9px;text-align:right;border:1px solid var(--border)}
+th:first-child{text-align:left}
+td{padding:4px 9px;border:1px solid var(--border);text-align:right;background:var(--surface)}
+td:first-child{text-align:left;color:var(--muted)}
+tr:hover td{background:var(--surface2)}
+.t-p10{color:var(--accent2)}.t-med{color:var(--accent);font-weight:500}.t-p90{color:var(--blue)}
+.t-ruin-hi{color:var(--red)}.t-ruin-mid{color:var(--accent2)}.t-ruin-ok{color:var(--green)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);width:330px;max-width:94vw}
+.modal-hdr{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent)}
+.modal-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1}
+.modal-x:hover{color:var(--text)}
+.modal-body{padding:14px 16px}
+.modal-ftr{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:7px;justify-content:flex-end}
+.hint{font-size:0.59rem;color:var(--muted);margin-top:3px;line-height:1.45}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2)}
+@media(max-width:660px){
+  .app{grid-template-columns:1fr}
+  .sidebar{max-height:44vh}
+  .sg{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>Retirement Planner</h1>
+    <p>Bayesian Monte Carlo · Nominal USD</p>
+  </div>
+
+  <div class="section">
+    <div class="sec-hdr" onclick="toggleSec(this)">
+      <span class="sec-title">Base Parameters</span><span class="sec-arrow open">▶</span>
+    </div>
+    <div class="sec-body open">
+      <div class="row2">
+        <div class="field"><label>Starting Balance ($)</label><input type="number" id="p-start" value="340000" step="1000"></div>
+        <div class="field"><label>Current Age</label><input type="number" id="p-age-start" value="35.5" step="0.5"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Target Age</label><input type="number" id="p-age-end" value="100" step="0.5"></div>
+        <div class="field"><label>Simulations</label>
+          <select id="p-sims">
+            <option value="20000">20,000 (fast)</option>
+            <option value="50000" selected>50,000</option>
+            <option value="100000">100,000 (slow)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-hdr" onclick="toggleSec(this)">
+      <span class="sec-title">Market Parameters</span><span class="sec-arrow">▶</span>
+    </div>
+    <div class="sec-body">
+      <div class="row2">
+        <div class="field"><label>Mean Return (%)</label><input type="number" id="p-mu" value="9.5" step="0.1"></div>
+        <div class="field"><label>Mean Uncertainty (%)</label><input type="number" id="p-mu-sd" value="1.8" step="0.1"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Base Volatility (%)</label><input type="number" id="p-sigma" value="15" step="0.5"></div>
+        <div class="field"><label>Vol Uncertainty (%)</label><input type="number" id="p-sigma-sd" value="4" step="0.5"></div>
+      </div>
+      <p class="hint">Each sim draws μ ~ N(mean, unc) and σ = base + |N(0, vol_unc)|.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-hdr" onclick="toggleSec(this)">
+      <span class="sec-title">Cash Flows</span><span class="sec-arrow open">▶</span>
+    </div>
+    <div class="sec-body open">
+      <div class="cf-list" id="cf-list"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="openModal('contrib')">＋ Add Contribution</button>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('wdraw')">－ Add Withdrawal ($)</button>
+        <button class="btn btn-ghost btn-sm" onclick="openModal('wdrawpct')">％ Add Withdrawal (%)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-hdr" onclick="toggleSec(this)">
+      <span class="sec-title">Display</span><span class="sec-arrow">▶</span>
+    </div>
+    <div class="sec-body">
+      <div class="field">
+        <label>Confidence Bands</label>
+        <select id="d-bands" onchange="if(simResults)drawChart()">
+          <option value="90_50">90% + 50% intervals</option>
+          <option value="90">90% interval only</option>
+          <option value="50">50% interval only</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Y-Axis Scale</label>
+        <select id="d-scale" onchange="if(simResults)drawChart()">
+          <option value="linear" selected>Linear</option>
+          <option value="log">Logarithmic</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="run-wrap">
+    <button class="run-btn" id="run-btn" onclick="runSim()">
+      <span class="spin" id="spin"></span>
+      <span id="run-lbl">Run Simulation</span>
+    </button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="main-hdr">
+    <h2>Projection</h2>
+    <span class="status" id="status">Configure and press Run</span>
+  </div>
+  <div class="chart-area">
+    <div class="chart-wrap">
+      <canvas id="chart" width="680" height="340"></canvas>
+      <div class="legend">
+        <div class="leg"><div class="ld" style="background:#4fd1c5"></div>Median</div>
+        <div class="leg"><div class="ld" style="background:#f6ad55"></div>10th pct</div>
+        <div class="leg"><div class="ld" style="background:#63b3ed"></div>90th pct</div>
+        <div class="leg"><div class="ld" style="background:rgba(79,209,197,0.22);border:1px solid rgba(79,209,197,0.5)"></div>50% band</div>
+        <div class="leg"><div class="ld" style="background:rgba(79,209,197,0.09);border:1px solid rgba(79,209,197,0.25)"></div>90% band</div>
+      </div>
+    </div>
+  </div>
+  <div class="stats-area">
+    <div class="sg" id="sg">
+      <div class="sc" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;height:56px">
+        <span style="color:var(--muted);font-size:0.68rem">Run a simulation to see results</span>
+      </div>
+    </div>
+  </div>
+  <div class="tbl-area" id="tbl-area">
+    <div class="tbl-controls">
+      <span class="tbl-title">Balance Snapshot</span>
+      <div class="tbl-ctrl-row">
+        <label class="ctrl-lbl">Avg Window</label>
+        <div class="seg-group" id="win-seg">
+          <button class="seg active" onclick="setWindow(1)">Annual</button>
+          <button class="seg" onclick="setWindow(3)">3-yr</button>
+          <button class="seg" onclick="setWindow(5)">5-yr</button>
+          <button class="seg" onclick="setWindow(10)">10-yr</button>
+        </div>
+        <label class="ctrl-lbl" style="margin-left:10px">Rows</label>
+        <div class="seg-group" id="row-seg">
+          <button class="seg active" onclick="setStep(1)">Every yr</button>
+          <button class="seg" onclick="setStep(5)">Every 5yr</button>
+          <button class="seg" onclick="setStep(10)">Every 10yr</button>
+        </div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="tbl"><thead id="tbl-head"></thead><tbody id="tbl-body"></tbody></table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal" onclick="bgClose(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title" id="modal-title">Add</span>
+      <button class="modal-x" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveCF()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let cashflows = [
+  { id:1, type:'contrib',  amount:1500,  fromAge:35.5, toAge:45  },
+  { id:2, type:'wdraw',    amount:5000, fromAge:59.5, toAge:100 }
+];
+let simResults = null;
+let modalType  = null;
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function toggleSec(hdr) {
+  const body = hdr.nextElementSibling;
+  const arr  = hdr.querySelector('.sec-arrow');
+  body.classList.toggle('open');
+  arr.classList.toggle('open');
+}
+
+function fmt(n) {
+  if (!isFinite(n) || n == null) return '—';
+  if (n <= 0) return '$0';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + Math.round(n/1000)  + 'K';
+  return '$' + Math.round(n);
+}
+function fmtPct(p) { return (p*100).toFixed(1) + '%'; }
+
+// ── Cash flow list ────────────────────────────────────────────────────────────
+function renderCF() {
+  const el = document.getElementById('cf-list');
+  if (!cashflows.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.63rem">None added.</div>'; return; }
+  el.innerHTML = cashflows.map(cf => {
+    const cls = cf.type === 'contrib' ? 'contrib' : cf.type === 'wdraw' ? 'wdraw' : 'wdrawpct';
+    const lbl = cf.type === 'contrib' ? 'IN' : cf.type === 'wdraw' ? 'OUT$' : 'OUT%';
+    const amt = cf.type === 'wdrawpct' ? cf.amount+'%/mo' : '$'+cf.amount.toLocaleString()+'/mo';
+    return `<div class="cf-row">
+      <span class="cf-badge ${cls}">${lbl}</span>
+      <span class="cf-desc">${amt}<br><span style="color:var(--muted);font-size:0.59rem">Age ${cf.fromAge}–${cf.toAge}</span></span>
+      <button class="cf-del" onclick="removeCF(${cf.id})">✕</button>
+    </div>`;
+  }).join('');
+}
+function removeCF(id) { cashflows = cashflows.filter(c => c.id !== id); renderCF(); }
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(type) {
+  modalType = type;
+  const titles = { contrib:'Add Contribution', wdraw:'Add Withdrawal ($)', wdrawpct:'Add Withdrawal (%)' };
+  document.getElementById('modal-title').textContent = titles[type];
+  const ageS = +document.getElementById('p-age-start').value || 35.5;
+  const ageE = +document.getElementById('p-age-end').value   || 100;
+  const lbl  = type === 'wdrawpct' ? 'Monthly % of Balance' : 'Monthly Amount ($)';
+  const ph   = type === 'wdrawpct' ? 'e.g. 0.333 (≈4%/yr)' : type === 'contrib' ? 'e.g. 1500' : 'e.g. 5000';
+  const hint = type === 'wdrawpct' ? '0.333%/mo ≈ 4%/yr. Applied to balance each year.'
+             : type === 'contrib'  ? 'Added each year before return is applied.'
+             :                       'Subtracted each year. Balance floors at $0.';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="field"><label>${lbl}</label>
+      <input type="number" id="m-amt" placeholder="${ph}" min="0" step="${type==='wdrawpct'?'0.1':'100'}">
+    </div>
+    <div class="row2">
+      <div class="field"><label>From Age</label><input type="number" id="m-from" value="${ageS}" step="0.5"></div>
+      <div class="field"><label>To Age</label>  <input type="number" id="m-to"   value="${ageE}" step="0.5"></div>
+    </div>
+    <p class="hint">${hint}</p>`;
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-amt').focus(), 40);
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function bgClose(e)   { if (e.target === document.getElementById('modal')) closeModal(); }
+function saveCF() {
+  const amt  = +document.getElementById('m-amt').value;
+  const from = +document.getElementById('m-from').value;
+  const to   = +document.getElementById('m-to').value;
+  if (!amt || amt <= 0)   { document.getElementById('m-amt').focus(); return; }
+  if (from >= to)         { alert('From Age must be less than To Age'); return; }
+  cashflows.push({ id: Date.now(), type: modalType, amount: amt, fromAge: from, toAge: to });
+  renderCF();
+  closeModal();
+}
+
+// ── RNG ───────────────────────────────────────────────────────────────────────
+function randn() {
+  let u=0, v=0;
+  while (!u) u = Math.random();
+  while (!v) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+// ── Simulation ────────────────────────────────────────────────────────────────
+function runSim() {
+  const start    = +document.getElementById('p-start').value    || 340000;
+  const ageStart = +document.getElementById('p-age-start').value|| 35.5;
+  const ageEnd   = +document.getElementById('p-age-end').value  || 100;
+  const N        = +document.getElementById('p-sims').value     || 50000;
+  const muMean   = +document.getElementById('p-mu').value    / 100;
+  const muSd     = +document.getElementById('p-mu-sd').value / 100;
+  const sigBase  = +document.getElementById('p-sigma').value / 100;
+  const sigSd    = +document.getElementById('p-sigma-sd').value / 100;
+  const years    = Math.ceil(ageEnd - ageStart);
+  if (years <= 0) { alert('Target age must exceed current age'); return; }
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.classList.add('running');
+  document.getElementById('run-lbl').textContent = 'Running…';
+  document.getElementById('status').textContent  = `Running ${N.toLocaleString()} simulations…`;
+
+  setTimeout(() => {
+    // yearlyAll[y][i] = balance of sim i at year y
+    const yearlyAll    = Array.from({length: years+1}, () => new Float64Array(N));
+    // netWdrawAll[y][i] = net withdrawal (positive = money out) for sim i at year y
+    // contributions count as negative withdrawal (reduce the draw figure)
+    const netWdrawAll  = Array.from({length: years+1}, () => new Float64Array(N));
+    const ruinYear     = new Int32Array(N).fill(-1);
+    yearlyAll[0].fill(start);
+
+    for (let i = 0; i < N; i++) {
+      const mu    = muMean + randn() * muSd;
+      const sigma = sigBase + Math.abs(randn() * sigSd);
+      let v = start;
+      let ruined = false;
+
+      for (let y = 1; y <= years; y++) {
+        if (ruined) { yearlyAll[y][i] = 0; continue; }
+        const age = ageStart + y;
+        let net = 0;
+        for (const cf of cashflows) {
+          if (age > cf.fromAge && age <= cf.toAge + 1/12) {
+            if      (cf.type === 'contrib')   net += cf.amount * 12;
+            else if (cf.type === 'wdraw')     net -= cf.amount * 12;
+            else if (cf.type === 'wdrawpct')  net -= (cf.amount / 100) * 12 * v;
+          }
+        }
+        // Store gross annual withdrawal for this year (positive = outflow)
+        // Only count if the sim hasn't already ruined
+        netWdrawAll[y][i] = -net; // net is negative when withdrawing, flip sign
+        v = Math.max(0, v + net) * (1 + mu + sigma * randn());
+        if (v <= 0) { v = 0; ruined = true; ruinYear[i] = y; }
+        yearlyAll[y][i] = v;
+      }
+    }
+
+    // Percentiles per year
+    const pcts      = [];
+    const ruinRates = [];
+    for (let y = 0; y <= years; y++) {
+      const s = yearlyAll[y].slice().sort((a,b) => a-b);
+      pcts.push({
+        p5:  s[Math.floor(N*0.05)],
+        p10: s[Math.floor(N*0.10)],
+        p25: s[Math.floor(N*0.25)],
+        p50: s[Math.floor(N*0.50)],
+        p75: s[Math.floor(N*0.75)],
+        p90: s[Math.floor(N*0.90)],
+        p95: s[Math.floor(N*0.95)],
+      });
+      let rc = 0;
+      for (let i = 0; i < N; i++) if (ruinYear[i] >= 0 && ruinYear[i] <= y) rc++;
+      ruinRates.push(rc / N);
+    }
+
+    // Median net withdrawal per year (sorted array, take midpoint)
+    const medWdrawPerYear = [];
+    for (let y = 0; y <= years; y++) {
+      const s = netWdrawAll[y].slice().sort((a,b) => a-b);
+      medWdrawPerYear.push(s[Math.floor(N * 0.50)]);
+    }
+
+    const sf   = yearlyAll[years].slice().sort((a,b) => a-b);
+    const mean = yearlyAll[years].reduce((a,b) => a+b, 0) / N;
+    simResults = { pcts, ruinRates, medWdrawPerYear, years, ageStart, N,
+      finals: {
+        p5:sf[Math.floor(N*0.05)], p10:sf[Math.floor(N*0.10)],
+        p25:sf[Math.floor(N*0.25)], p50:sf[Math.floor(N*0.50)],
+        p75:sf[Math.floor(N*0.75)], p90:sf[Math.floor(N*0.90)],
+        p95:sf[Math.floor(N*0.95)], mean
+      }
+    };
+
+    btn.disabled = false; btn.classList.remove('running');
+    document.getElementById('run-lbl').textContent = 'Run Simulation';
+    document.getElementById('status').textContent  =
+      `${N.toLocaleString()} sims · ${years}yr · ruin@end: ${fmtPct(ruinRates[years])}`;
+
+    renderStats(); renderTable(); drawChart();
+  }, 20);
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats() {
+  const f = simResults.finals;
+  document.getElementById('sg').innerHTML = [
+    {l:'10th Pct', v:fmt(f.p10), c:'c-yellow', s:'Lower bound'},
+    {l:'25th Pct', v:fmt(f.p25), c:'c-teal',   s:'Below median'},
+    {l:'Median',   v:fmt(f.p50), c:'c-teal',   s:'Most likely'},
+    {l:'75th Pct', v:fmt(f.p75), c:'c-blue',   s:'Above median'},
+    {l:'90th Pct', v:fmt(f.p90), c:'c-green',  s:'Upper bound'},
+    {l:'Mean',     v:fmt(f.mean),c:'c-teal',   s:'Expected avg'},
+  ].map(r=>`<div class="sc"><div class="sl">${r.l}</div><div class="sv ${r.c}">${r.v}</div><div class="ss">${r.s}</div></div>`).join('');
+}
+
+// ── Table state ───────────────────────────────────────────────────────────────
+let tblWindow = 1;   // averaging window in years
+let tblStep   = 5;   // row stride in years
+
+function setWindow(w) {
+  tblWindow = w;
+  document.querySelectorAll('#win-seg .seg').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#win-seg .seg').forEach(b => {
+    if (b.textContent.trim() === (w === 1 ? 'Annual' : w+'-yr')) b.classList.add('active');
+  });
+  if (simResults) renderTable();
+}
+
+function setStep(s) {
+  tblStep = s;
+  document.querySelectorAll('#row-seg .seg').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#row-seg .seg').forEach(b => {
+    if (b.textContent.trim() === (s === 1 ? 'Every yr' : 'Every '+s+'yr')) b.classList.add('active');
+  });
+  if (simResults) renderTable();
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const { pcts, ruinRates, medWdrawPerYear, years, ageStart } = simResults;
+  const W = tblWindow;
+  const S = tblStep;
+
+  // Build list of years to show as rows
+  const yrs = [];
+  for (let y = 0; y <= years; y += S) yrs.push(y);
+  if (yrs[yrs.length - 1] !== years) yrs.push(years);
+
+  // Header — label changes based on window
+  const winLabel = W === 1 ? 'Annual Wdraw' : W + '-Yr Avg Wdraw';
+  document.getElementById('tbl-head').innerHTML = `<tr>
+    <th>Age</th>
+    <th>10th Pct</th><th>25th Pct</th><th>Median</th><th>75th Pct</th><th>90th Pct</th>
+    <th>${winLabel}/yr</th><th>Wdraw % Bal</th><th>% Ruined</th>
+  </tr>`;
+
+  document.getElementById('tbl-body').innerHTML = yrs.map(y => {
+    const p   = pcts[y];
+    const r   = ruinRates[y];
+    const rc  = r > 0.2 ? 't-ruin-hi' : r > 0.05 ? 't-ruin-mid' : 't-ruin-ok';
+    const age = +(ageStart + y).toFixed(1);
+
+    // Average medWdrawPerYear over rolling window ending at year y
+    // Window: [y - W + 1 .. y], clamped to [1, years]
+    const wStart = Math.max(1, y - W + 1);
+    const wEnd   = Math.max(1, y);
+    let wSum = 0, wCount = 0;
+    for (let wy = wStart; wy <= wEnd; wy++) {
+      wSum += medWdrawPerYear[wy];
+      wCount++;
+    }
+    const avgWdraw = wCount > 0 ? wSum / wCount : 0;
+    const medBal   = p.p50;
+
+    // Wdraw % of median balance
+    const absDraw = Math.abs(avgWdraw);
+    const pctOfBal = (medBal > 0 && absDraw > 0) ? (absDraw / medBal * 100).toFixed(1) + '%' : '—';
+
+    // Cell coloring: green = net inflow, amber = net outflow, muted = zero
+    let wdrawTd, pctTd;
+    if (avgWdraw < -1) {
+      // Net contributions — money flowing in
+      wdrawTd = `<td style="color:var(--green)">${fmt(absDraw)} in</td>`;
+      pctTd   = `<td style="color:var(--green)">${pctOfBal} in</td>`;
+    } else if (Math.abs(avgWdraw) <= 1) {
+      wdrawTd = '<td style="color:var(--muted)">—</td>';
+      pctTd   = '<td style="color:var(--muted)">—</td>';
+    } else {
+      wdrawTd = `<td style="color:var(--accent2)">${fmt(avgWdraw)}</td>`;
+      pctTd   = `<td style="color:var(--accent2)">${pctOfBal}</td>`;
+    }
+
+    return `<tr>
+      <td>${age}</td>
+      <td class="${p.p10 <= 0 ? 't-ruin-hi' : 't-p10'}">${fmt(p.p10)}</td>
+      <td>${fmt(p.p25)}</td>
+      <td class="t-med">${fmt(p.p50)}</td>
+      <td>${fmt(p.p75)}</td>
+      <td class="t-p90">${fmt(p.p90)}</td>
+      ${wdrawTd}
+      ${pctTd}
+      <td class="${rc}">${fmtPct(r)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tbl-area').style.display = 'block';
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+function drawChart() {
+  if (!simResults) return;
+  const { pcts, years, ageStart } = simResults;
+  const bands = document.getElementById('d-bands').value;
+
+  const canvas = document.getElementById('chart');
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = canvas.parentElement.clientWidth || 680;
+  const H      = 340;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const PAD = { top:20, right:86, bottom:42, left:80 };
+  const CW  = W - PAD.left - PAD.right;
+  const CH  = H - PAD.top  - PAD.bottom;
+
+  // Y axis hard-clipped at $5M
+  const Y_MAX = 5000000;
+
+  // Linear mapping: v=0 → bottom, v=Y_MAX → top. Values above Y_MAX are clipped.
+  function toPixelY(v) {
+    const clamped = Math.min(Math.max(v, 0), Y_MAX);
+    return PAD.top + CH - (clamped / Y_MAX) * CH;
+  }
+  function xPixel(yr) { return PAD.left + (yr / years) * CW; }
+
+  // ── Background ────────────────────────────────────────────────────────────
+  ctx.fillStyle = '#13161e';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Y-axis ticks: $0, $1M, $2M, $3M, $4M, $5M ───────────────────────────
+  const yTicks = [0, 500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000, 4500000, 5000000];
+  ctx.font = `10px 'DM Mono', monospace`;
+  yTicks.forEach(v => {
+    const py = toPixelY(v);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.left, py); ctx.lineTo(PAD.left + CW, py); ctx.stroke();
+    ctx.fillStyle = '#6b7394';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(v), PAD.left - 6, py + 4);
+  });
+
+  // ── X-axis ticks ─────────────────────────────────────────────────────────
+  const xStep = Math.ceil(years / 6);
+  for (let yr = 0; yr <= years; yr += xStep) {
+    const px = xPixel(yr);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + CH); ctx.stroke();
+    ctx.fillStyle = '#6b7394';
+    ctx.font = `10px 'DM Mono', monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('' + Math.round(ageStart + yr), px, PAD.top + CH + 16);
+  }
+
+  // ── Cashflow marker lines ────────────────────────────────────────────────
+  for (const cf of cashflows) {
+    for (const age of [cf.fromAge, cf.toAge]) {
+      const yr = age - ageStart;
+      if (yr < 0 || yr > years) continue;
+      const color = cf.type === 'contrib' ? 'rgba(104,211,145,0.3)' : 'rgba(252,129,129,0.3)';
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(xPixel(yr), PAD.top); ctx.lineTo(xPixel(yr), PAD.top + CH); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // ── Confidence bands ─────────────────────────────────────────────────────
+  function drawBand(loKey, hiKey, fillColor) {
+    ctx.beginPath();
+    for (let y = 0; y <= years; y++) {
+      const x = xPixel(y), py = toPixelY(pcts[y][loKey]);
+      y === 0 ? ctx.moveTo(x, py) : ctx.lineTo(x, py);
+    }
+    for (let y = years; y >= 0; y--) ctx.lineTo(xPixel(y), toPixelY(pcts[y][hiKey]));
+    ctx.closePath();
+    ctx.fillStyle = fillColor; ctx.fill();
+  }
+  if (bands === '90_50' || bands === '90') drawBand('p5',  'p95', 'rgba(79,209,197,0.08)');
+  if (bands === '90_50' || bands === '50') drawBand('p25', 'p75', 'rgba(79,209,197,0.18)');
+
+  // ── Percentile lines ─────────────────────────────────────────────────────
+  // Lines that go to $0 drop to the bottom axis; lines above $5M clip at top.
+  // We draw continuously — toPixelY already clamps to [top, bottom].
+  function drawLine(key, color, lineWidth, dash) {
+    ctx.beginPath();
+    let started  = false;
+    let hitFloor = false;
+    for (let y = 0; y <= years; y++) {
+      const v  = pcts[y][key];
+      const px = xPixel(y);
+      const py = toPixelY(v);
+      if (!started) { ctx.moveTo(px, py); started = true; continue; }
+      if (hitFloor) continue;
+      if (v <= 0) {
+        ctx.lineTo(px, PAD.top + CH);
+        hitFloor = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = lineWidth;
+    ctx.setLineDash(dash || []);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  drawLine('p10', '#f6ad55', 1.5, [4, 3]);
+  drawLine('p90', '#63b3ed', 1.5, [4, 3]);
+  drawLine('p50', '#4fd1c5', 2.5, []);
+
+  // Clip indicator — small label at top-right if 90th pct exceeds $5M
+  if (simResults.finals.p90 > Y_MAX) {
+    ctx.fillStyle = 'rgba(99,179,237,0.6)';
+    ctx.font = `9px 'DM Mono', monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillText('▲ 90th clips above $5M', PAD.left + CW, PAD.top + 12);
+  }
+
+  // ── Axes ─────────────────────────────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(PAD.left, PAD.top + CH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top + CH); ctx.lineTo(PAD.left + CW, PAD.top + CH); ctx.stroke();
+
+  // ── End-of-chart labels ───────────────────────────────────────────────────
+  const endX = xPixel(years) + 4;
+  [
+    [simResults.finals.p90, '#63b3ed', '90th'],
+    [simResults.finals.p50, '#4fd1c5', 'Med'],
+    [simResults.finals.p10, '#f6ad55', '10th'],
+  ].forEach(([v, c, lbl]) => {
+    const py = v <= 0 ? PAD.top + CH : toPixelY(v);
+    ctx.fillStyle = c;
+    ctx.font = `bold 10px 'DM Mono', monospace`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`${lbl} ${fmt(v)}`, endX, Math.max(PAD.top + 8, Math.min(py + 4, PAD.top + CH)));
+  });
+
+  // ── X axis label ─────────────────────────────────────────────────────────
+  ctx.fillStyle = '#6b7394'; ctx.font = `10px 'DM Mono',monospace`; ctx.textAlign = 'center';
+  ctx.fillText('Age', PAD.left + CW/2, PAD.top + CH + 32);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderCF();
+window.addEventListener('resize', () => { if (simResults) drawChart(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('modal').classList.contains('open')) saveCF();
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# uv / venv
+.venv/
+# NOTE: commit uv.lock — it's what makes Docker builds reproducible
+
+# Runtime outputs
+*.png
+retirement_projection.png
+
+# Market data cache (user-specific, regenerated automatically)
+~/.retirement_model_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

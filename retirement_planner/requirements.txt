@@ -1,0 +1,31 @@
+# Bayesian Retirement Planner — Python dependencies
+# Install: pip install -r requirements.txt
+#
+# Core scientific stack
+numpy>=2.0.0
+scipy>=1.10.0
+pandas>=2.0.0
+statsmodels>=0.14.0
+
+# Bayesian inference
+pymc>=5.10.0
+arviz>=0.18.0
+pytensor>=2.20.0
+
+# Market data
+yfinance>=0.2.0
+pandas-datareader>=0.10.0   # fallback: stooq / FRED
+
+# Volatility modelling
+arch>=6.0.0
+
+# Regime detection (optional — empirical method used by default)
+hmmlearn>=0.3.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# Optional: Dash UI (future)
+# dash>=2.14.0
+# dash-bootstrap-components>=1.5.0
+# plotly>=5.18.0

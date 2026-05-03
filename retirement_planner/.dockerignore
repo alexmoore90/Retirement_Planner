@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+*.png
+*.csv
+.pytest_cache/
+.ruff_cache/
+README.md
+ARCHITECTURE.md
