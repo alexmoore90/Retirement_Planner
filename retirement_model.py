@@ -1174,6 +1174,71 @@ def print_summary(results: SimResults, cfg: SimConfig) -> None:
     print(f"{'='*W}\n")
 
 
+def save_csv(results: SimResults, cfg: SimConfig, path: str) -> None:
+    """
+    Write two CSV files: <path>_snapshots.csv (year-by-year table) and
+    <path>_summary.csv (scalar stats). <path> is the stem without extension.
+    """
+    import csv, datetime
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    snap_path = path + "_snapshots.csv"
+    summ_path = path + "_summary.csv"
+
+    years  = results.years
+    stride = max(1, years // 13)
+    yrs    = list(range(0, years, stride))
+    if yrs[-1] != years:
+        yrs.append(years)
+
+    with open(snap_path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["age", "p5", "p10", "p25", "median", "p75", "p90", "p95",
+                    "med_withdrawal_yr", "ruin_pct"])
+        for y in yrs:
+            age = cfg.age_start + y
+            p   = results.pcts[y]
+            w.writerow([
+                round(age, 1),
+                round(p[0.05], 2), round(p[0.10], 2), round(p[0.25], 2),
+                round(p[0.50], 2), round(p[0.75], 2), round(p[0.90], 2),
+                round(p[0.95], 2),
+                round(results.med_wdraw[y], 2),
+                round(results.ruin_rates[y] * 100, 2),
+            ])
+
+    post = results.posterior
+    f_   = results.finals
+    with open(summ_path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["metric", "value"])
+        w.writerow(["run_date",            datetime.date.today().isoformat()])
+        w.writerow(["start_balance",       cfg.start_balance])
+        w.writerow(["age_start",           cfg.age_start])
+        w.writerow(["age_end",             cfg.age_end])
+        w.writerow(["n_sims",              results.n_sims])
+        w.writerow(["cape",                cfg.current_cape])
+        w.writerow(["ruin_pct",            round(results.ruin_rates[years] * 100, 2)])
+        w.writerow(["ruin_age_mean",       round(results.ruin_age_mean,   1) if results.ruin_age_mean   else ""])
+        w.writerow(["ruin_age_median",     round(results.ruin_age_median, 1) if results.ruin_age_median else ""])
+        w.writerow(["final_p5",            round(f_[0.05], 2)])
+        w.writerow(["final_p10",           round(f_[0.10], 2)])
+        w.writerow(["final_p25",           round(f_[0.25], 2)])
+        w.writerow(["final_median",        round(f_[0.50], 2)])
+        w.writerow(["final_p75",           round(f_[0.75], 2)])
+        w.writerow(["final_p90",           round(f_[0.90], 2)])
+        w.writerow(["final_p95",           round(f_[0.95], 2)])
+        w.writerow(["final_mean",          round(f_["mean"], 2)])
+        w.writerow(["bull_mu_mean",        round(float(post.bull_mu.mean())  * 100, 3)])
+        w.writerow(["bear_mu_mean",        round(float(post.bear_mu.mean())  * 100, 3)])
+        w.writerow(["p_bull_mean",         round(float(post.p_bull.mean())   * 100, 2)])
+        w.writerow(["posterior_draws",     post.n_draws])
+        w.writerow(["data_source",         post.data_source])
+        w.writerow(["data_years",          post.data_years])
+
+    print(f"  CSV saved: {snap_path}")
+    print(f"  CSV saved: {summ_path}")
+
+
 def plot_results(results: SimResults, cfg: SimConfig,
                  path: str = "retirement_projection.png") -> None:
     if not HAS_MATPLOTLIB:
@@ -1334,7 +1399,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     g = p.add_argument_group("Output")
     g.add_argument("--plot",             action="store_true", help="Save chart to file")
-    g.add_argument("--plot-out",         type=str, default="retirement_projection.png")
+    g.add_argument("--plot-out",         type=str, default="my_results/retirement_projection.png")
+    g.add_argument("--csv",              action="store_true", help="Save results CSVs to file")
+    g.add_argument("--csv-out",          type=str, default="my_results/retirement",
+                   help="CSV output stem — produces <stem>_snapshots.csv and <stem>_summary.csv")
     g.add_argument("--freq-diagnostics", action="store_true",
                    help="Print full frequentist diagnostic report")
 
@@ -1410,6 +1478,9 @@ def main():
               f"| GPD xi={fd.gpd_xi:.3f} scale={fd.gpd_scale:.3f} "
               f"| LB5_p={fd.ljung_box_5_p:.3f} "
               f"-- use --freq-diagnostics for full report")
+
+    if args.csv:
+        save_csv(results, cfg, path=args.csv_out)
 
     if args.plot:
         plot_results(results, cfg, path=args.plot_out)
