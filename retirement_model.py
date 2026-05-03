@@ -82,9 +82,15 @@ from scipy.stats import genpareto, kstest, jarque_bera, shapiro
 
 warnings.filterwarnings("ignore")
 
+# Configure PyTensor before any imports trigger its initialisation
+os.environ.setdefault("PYTENSOR_FLAGS", "cxx=,mode=NUMBA")
+
 # ── Optional imports ──────────────────────────────────────────────────────────
 try:
+    import logging
+    logging.getLogger("pytensor.configdefaults").setLevel(logging.ERROR)
     import pymc as pm
+    import pytensor
     import pytensor.tensor as pt
     import arviz as az
     HAS_PYMC = True
@@ -269,7 +275,8 @@ def _load_cache():
         if age > _CACHE_TTL:
             print(f"  Cache {age:.0f}d old — refreshing...")
             return None
-        df = pd.read_csv(_CACHE_FILE, index_col=0, parse_dates=True)
+        df = pd.read_csv(_CACHE_FILE, index_col=0)
+        df.index = pd.to_datetime(df.index, utc=True)
         print(f"  Cache: {len(df):,} daily rows  ({age:.1f}d old)")
         return df
     except Exception:
@@ -351,7 +358,8 @@ def fetch_market_data(years_back: int = 75) -> dict:
                 break
 
     if df is not None:
-        cutoff  = pd.Timestamp.now() - pd.DateOffset(years=years_back)
+        tz      = getattr(df.index, "tz", None)
+        cutoff  = pd.Timestamp.now(tz=tz) - pd.DateOffset(years=years_back)
         df      = df[df.index >= cutoff]
         annual  = df["Close"].resample("YE").last().pct_change().dropna().values.astype(np.float64)
         monthly = df["Close"].resample("ME").last().pct_change().dropna().values.astype(np.float64)
