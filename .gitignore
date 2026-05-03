@@ -19,6 +19,10 @@ retirement_projection.png
 # Market data cache (user-specific, regenerated automatically)
 ~/.retirement_model_cache/
 
+# Local Claude context (do not publish)
+CLAUDE.md
+.claude/
+
 # IDE
 .vscode/
 .idea/
