@@ -16,6 +16,9 @@ build/
 *.png
 retirement_projection.png
 
+# Personal run results (CSVs and plots)
+my_results/
+
 # Market data cache (user-specific, regenerated automatically)
 ~/.retirement_model_cache/
 
