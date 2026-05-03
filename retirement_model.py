@@ -255,6 +255,8 @@ class SimResults:
     n_sims:      int
     posterior:   BayesianPosterior
     finals:      dict
+    ruin_age_mean:   Optional[float] = None
+    ruin_age_median: Optional[float] = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1021,13 +1023,21 @@ def run_simulation(cfg: SimConfig) -> SimResults:
     finals = {p: float(sf[int(N * p)]) for p in pct_keys}
     finals["mean"] = float(yearly_snapshots[years].mean())
 
+    ruined_years = ruin_year[ruin_year >= 0]
+    ruin_ages    = cfg.age_start + ruined_years
+    ruin_age_mean   = float(ruin_ages.mean())   if len(ruin_ages) else None
+    ruin_age_median = float(np.median(ruin_ages)) if len(ruin_ages) else None
+
     print(f"  Simulation: {sim_time:.1f}s  |  "
-          f"ruin rate at age {cfg.age_end}: {ruin_rates[years]*100:.1f}%")
+          f"ruin rate at age {cfg.age_end}: {ruin_rates[years]*100:.1f}%  |  "
+          f"avg depletion age: {ruin_age_mean:.1f}")
 
     return SimResults(pcts=pcts_list, ruin_rates=ruin_rates,
                       med_wdraw=med_wdraw, years=years,
                       age_start=cfg.age_start, n_sims=N,
-                      posterior=post, finals=finals)
+                      posterior=post, finals=finals,
+                      ruin_age_mean=ruin_age_mean,
+                      ruin_age_median=ruin_age_median)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1116,6 +1126,9 @@ def print_summary(results: SimResults, cfg: SimConfig) -> None:
     print(f"  {'-'*64}")
     print(f"  Bayesian predictive ruin probability: "
           f"{fmtpct(results.ruin_rates[results.years])}")
+    if results.ruin_age_mean is not None:
+        print(f"  Avg depletion age (ruined paths):     "
+              f"{results.ruin_age_mean:.1f}  |  median: {results.ruin_age_median:.1f}")
     print("  (Integrates over full posterior — true P(ruin | data, priors))")
     if post.freq_diag and np.isfinite(post.freq_diag.gpd_xi):
         fd = post.freq_diag
